@@ -2,8 +2,14 @@
 ---
 ## Preparation
 1. Make sure that the data to be cleaned is in the data directory and is sorted into files by first letter, scripts are based on 4iQ data so the directory structure of that is known to work
-2. run sort_by_pass.py to separately create a OrganizedPasswords directory
-	```python3 sort_by_pass.py```
+2. go into the scripts directory
+``
+cd scripts
+``
+3. run sort_by_pass.py to separately create a OrganizedPasswords directory
+``
+    python3 sort_by_pass.py
+``
 #### Follow on Distribution
 *Follow these instructions to create a custom filter for the dataset, skip to use our filter created from 4iQ data*
 1. run calc_distribution.go
@@ -23,11 +29,11 @@
 
 
 ## Cleaning
-1. ```cd data_cleaning```
+1. Change directory to data_cleaning ```cd data_cleaning```
 
 *To count credentials that would be removed*
 	```make count```
-    
+
 *To remove artificial data*
 	```make clean```
 
