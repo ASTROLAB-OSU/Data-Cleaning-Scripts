@@ -248,7 +248,7 @@ func processFile(srcPath, destPath string) error {
 	fileStats.suspiciousEmailRemovals = len(removedSuspiciousEmail)
 	_, _, _ = removeSuspiciousFollowOnRatios(usernames, passwords, &removedFor)
 	fileStats.forRemovals = len(removedFor)
-	_, _ = removeSuspiciousFollowOnDistrobution(usernames, passwords, &removedFod)
+	_, _ = removeSuspiciousFollowOnDistribution(usernames, passwords, &removedFod)
 	fileStats.fodRemovals = len(removedFod)
 	fileStats.fbobRemovals = checkFBOB(usernames, passwords, &removedFBOB)
 

@@ -24,6 +24,13 @@ cd scripts
 #### Follow on Ratio
 1. run standalone_to_ratio_stats.go
 	```go run standalone_to_ratio_stats.go trie.go```
+
+	*Do the following steps for a custom follow on ratio cutoff*
+	1. run standalone_to_ratio_scatter.py
+			```python3 standalone_to_ratio_scatter.py```
+	2. Looking at the output "for_graph.png", determine where you would like the line to go
+	3. Update the calcCurve function in for_identify_passwords.go to reflect the new cutoff line
+
 2. run for_identify_passwords.go
 	```go run for_identify_passwords.go```
 
@@ -38,3 +45,12 @@ cd scripts
 	```make clean```
 
 The entries will be put into respective files in the data directory
+
+### Extra Adjustments
+For any adjustments to the prior works filters, they are located in data_cleaning_script.go within the function priorWorkChecks.
+
+New rule based filters are within data_cleaning_script.go in removeRuleBased.
+
+FBOBH filters are located in the removeFBOB function in data_cleaning_script.go.
+
+All other filters are within their own file in the data_cleaning directory.
