@@ -6,7 +6,7 @@ from collections import defaultdict
 total_follow_threshhold = 10000
 follow_percent_threshhold = 50
 chain_length_threshhold = 3
-src = "/data/credential-linking/COMB/CompilationOfManyBreaches/data"
+src = "[Insert Config]"
 dst = "../results/suspicious_email_groups"
 
 def extract_domain(email):

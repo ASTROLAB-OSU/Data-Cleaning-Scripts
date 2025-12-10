@@ -9,13 +9,14 @@ type CleaningStats struct {
 	Prior_InvEmailRemovals  int
 	Prior_ExcEmailRemovals  int
 	RuleBasedRemovals       int
-	Rule_SeqUserRemovals    int
 	Rule_DupeRemovals       int
 	Rule_LenEmailRemovals   int
 	Rule_TLDRemovals        int
-	SuspiciousEmailRemovals int
-	FodRemovals             int
-	ForRemovals             int
+	OutlierRemovals         int
+	Outlier_SeqUserRemovals int
+	Outlier_ChainRemovals   int
+	Outlier_FodRemovals     int
+	Outlier_ForRemovals     int
 	FbobRemovals            int
 	TotalRemovals           int
 	TotalProcessed          int
@@ -38,24 +39,24 @@ type BreachConfig struct {
 var BreachConfigs = map[string]BreachConfig{
 	"4iq": {
 		Name:                    "4iq",
-		SrcDirectory:            "/data/credential-linking/BreachCompilation/data",
-		DstDirectoryClean:       "/data/lucas/4iq_cleaned",
-		DstDirectoryCount:       "/data/lucas/4iq_counted",
-		ChainsFile:              "/home/lucas/Data-Cleaning/comb-cleaning/scripts/data_cleaning/config/4iq_suspicious_chains.csv",
-		ForCfg:                  "/home/lucas/Data-Cleaning/comb-cleaning/scripts/data_cleaning/config/4iq_for_passwords.json",
-		FodCfg:                  "/home/lucas/Data-Cleaning/comb-cleaning/scripts/data_cleaning/config/4iq_fod_passwords.json",
-		TLDFile:                 "/home/lucas/Data-Cleaning/comb-cleaning/scripts/data_cleaning/config/iana_tlds.txt",
+		SrcDirectory:            "[Insert Config]",
+		DstDirectoryClean:       "[Insert Config]",
+		DstDirectoryCount:       "[Insert Config]",
+		ChainsFile:              "[Insert Config]",
+		ForCfg:                  "[Insert Config]",
+		FodCfg:                  "[Insert Config]",
+		TLDFile:                 "[Insert Config]",
 		ExcessiveEmailThreshold: 100,
 	},
 	"comb": {
 		Name:                    "comb",
-		SrcDirectory:            "/data/credential-linking/COMB/CompilationOfManyBreaches/data",
-		DstDirectoryClean:       "/data/lucas/comb_cleaned",
-		DstDirectoryCount:       "/data/lucas/comb_counted",
-		ChainsFile:              "/home/lucas/Data-Cleaning/comb-cleaning/scripts/data_cleaning/config/comb_suspicious_chains.csv",
-		ForCfg:                  "/home/lucas/Data-Cleaning/comb-cleaning/scripts/data_cleaning/config/comb_for_passwords.json",
-		FodCfg:                  "/home/lucas/Data-Cleaning/comb-cleaning/scripts/data_cleaning/config/comb_fod_passwords.json",
-		TLDFile:                 "/home/lucas/Data-Cleaning/comb-cleaning/scripts/data_cleaning/config/iana_tlds.txt",
+		SrcDirectory:            "[Insert Config]",
+		DstDirectoryClean:       "[Insert Config]",
+		DstDirectoryCount:       "[Insert Config]",
+		ChainsFile:              "[Insert Config]",
+		ForCfg:                  "[Insert Config]",
+		FodCfg:                  "[Insert Config]",
+		TLDFile:                 "[Insert Config]",
 		ExcessiveEmailThreshold: 100,
 	},
 }

@@ -1,6 +1,8 @@
 import os
 import string
 
+src_dir = "[Insert Config]"
+
 def split_cred(cred):
     credential = cred.strip()
     if ':' in credential:
@@ -11,7 +13,7 @@ def split_cred(cred):
     return password
 
 
-def create_password_files(dest_dir, src_dir):
+def create_password_files(dest_dir):
     os.makedirs(dest_dir, exist_ok=True)
     
     # Dictionary to store file handles for each character type
@@ -84,10 +86,9 @@ def sort_password_files_by_password(dest_dir):
 if __name__ == "__main__":
     # Specify the destination directory containing the organized password files
     destination_directory = "../results/OrganizedPasswords"
-    source_directory = "../data"
 
     # add all passwords to their own files
-    create_password_files(destination_directory, source_directory)
+    create_password_files(destination_directory)
 
     # Sort all passwords in each file alphabetically by the password
     sort_password_files_by_password(destination_directory)
