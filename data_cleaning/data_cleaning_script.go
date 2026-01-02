@@ -107,7 +107,7 @@ func processFile(srcPath, destPath, logPath string) error {
 			continue
 		}
 
-		originalUsernames = append(originalUsernames, user)
+		originalUsernames = append(originalUsernames, strings.ToLower(user))
 		originalPasswords = append(originalPasswords, pass)
 	}
 
@@ -116,14 +116,16 @@ func processFile(srcPath, destPath, logPath string) error {
 		return err
 	}
 
-	trueOriginalCount := len(originalUsernames)
+	originalCount := len(originalUsernames)
 
 	var usernames []string
 	var passwords []string
 	var removedPriorWorks []string
-	var removedRuleBased []string
+	var removedSyntactic []string
+	var removedPassOutlier []string
+	var removedEmailOutlier []string
 	var removedSeqUsers []string
-	var removedSuspiciousEmail []string
+	var removedEmailChains []string
 	var removedFod []string
 	var removedFor []string
 	var removedFBOB []string
@@ -133,34 +135,46 @@ func processFile(srcPath, destPath, logPath string) error {
 	if *dryRun {
 		// DRY RUN MODE: Count what would be removed without actually removing
 		_, _ = cleaning.PriorWorksCleaning(originalUsernames, originalPasswords, breachConfig.ExcessiveEmailThreshold, &removedPriorWorks, &fileStats, *dryRun)
-		fileStats.PriorWorkRemovals = len(removedPriorWorks)
-		cleaning.CheckRuleBased(originalUsernames, originalPasswords, &removedRuleBased, &fileStats, TLD_SET)
-		_, _ = cleaning.RemoveSeqUsers(originalUsernames, originalPasswords, &removedSeqUsers)
-		fileStats.Outlier_SeqUserRemovals = len(removedSeqUsers)
-		_, _, _ = cleaning.RemoveSuspiciousEmails(originalUsernames, originalPasswords, &removedSuspiciousEmail, breachConfig.ChainsFile)
-		fileStats.Outlier_ChainRemovals = len(removedSuspiciousEmail)
+		_, _ = cleaning.RemoveSyntactic(originalUsernames, originalPasswords, &removedSyntactic, &fileStats, TLD_SET)
+		_, _ = cleaning.RemoveSeqUsers(originalUsernames, originalPasswords, breachConfig.SequentialUserThreshold, &removedSeqUsers)
+		_, _, _ = cleaning.RemoveEmailChains(originalUsernames, originalPasswords, &removedEmailChains, breachConfig.ChainsFile)
 		_, _, _ = cleaning.RemoveSuspiciousFollowOnRatios(originalUsernames, originalPasswords, &removedFor, breachConfig.ForCfg)
-		fileStats.Outlier_ForRemovals = len(removedFor)
 		_, _ = cleaning.RemoveSuspiciousFollowOnDistribution(originalUsernames, originalPasswords, &removedFod, breachConfig.FodCfg)
-		fileStats.Outlier_FodRemovals = len(removedFod)
-		fileStats.FbobRemovals = cleaning.CheckFBOB(originalUsernames, originalPasswords, &removedFBOB)
-		fileStats.TotalProcessed = trueOriginalCount // Use actual file count
+		_, _ = cleaning.RemoveFBOB(originalUsernames, originalPasswords, &removedFBOB)
 
-		// Calculate deduplicated statistical outliers count
-		statisticalOutliersSet := make(map[string]bool)
+		fileStats.PriorWorkRemovals = len(removedPriorWorks)
+		fileStats.SyntacticRemovals = len(removedSyntactic)
+		fileStats.Email_SeqUserRemovals = len(removedSeqUsers)
+		fileStats.Email_ChainRemovals = len(removedEmailChains)
+		fileStats.Pass_ForRemovals = len(removedFor)
+		fileStats.Pass_FodRemovals = len(removedFod)
+		fileStats.FbobRemovals = len(removedFBOB)
+		fileStats.TotalProcessed = originalCount // Use actual cred count
+
+		// Calculate statistical outliers count
+		emailOutliersSet := make(map[string]bool)
 		for _, cred := range removedSeqUsers {
-			statisticalOutliersSet[cred] = true
+			emailOutliersSet[cred] = true
 		}
-		for _, cred := range removedSuspiciousEmail {
-			statisticalOutliersSet[cred] = true
+		for _, cred := range removedEmailChains {
+			emailOutliersSet[cred] = true
+		}
+		fileStats.EmailOutlierRemovals = len(emailOutliersSet)
+		for cred := range emailOutliersSet {
+			removedEmailOutlier = append(removedEmailOutlier, cred)
+		}
+
+		passOutliersSet := make(map[string]bool)
+		for _, cred := range removedFor {
+			passOutliersSet[cred] = true
 		}
 		for _, cred := range removedFod {
-			statisticalOutliersSet[cred] = true
+			passOutliersSet[cred] = true
 		}
-		for _, cred := range removedFor {
-			statisticalOutliersSet[cred] = true
+		fileStats.PassOutlierRemovals = len(passOutliersSet)
+		for cred := range passOutliersSet {
+			removedPassOutlier = append(removedPassOutlier, cred)
 		}
-		fileStats.OutlierRemovals = len(statisticalOutliersSet)
 
 		// Update global statistics with mutex protection
 		statsLock.Lock()
@@ -171,15 +185,16 @@ func processFile(srcPath, destPath, logPath string) error {
 		globalStats.Prior_InvEmailRemovals += fileStats.Prior_InvEmailRemovals
 		globalStats.Prior_ExcEmailRemovals += fileStats.Prior_ExcEmailRemovals
 		globalStats.PriorWorkRemovals += fileStats.PriorWorkRemovals
-		globalStats.Rule_DupeRemovals += fileStats.Rule_DupeRemovals
-		globalStats.Rule_LenEmailRemovals += fileStats.Rule_LenEmailRemovals
-		globalStats.Rule_TLDRemovals += fileStats.Rule_TLDRemovals
-		globalStats.RuleBasedRemovals += fileStats.RuleBasedRemovals
-		globalStats.OutlierRemovals += fileStats.OutlierRemovals
-		globalStats.Outlier_SeqUserRemovals += fileStats.Outlier_SeqUserRemovals
-		globalStats.Outlier_ChainRemovals += fileStats.Outlier_ChainRemovals
-		globalStats.Outlier_ForRemovals += fileStats.Outlier_ForRemovals
-		globalStats.Outlier_FodRemovals += fileStats.Outlier_FodRemovals
+		globalStats.Syn_DupeRemovals += fileStats.Syn_DupeRemovals
+		globalStats.Syn_LenEmailRemovals += fileStats.Syn_LenEmailRemovals
+		globalStats.Syn_TLDRemovals += fileStats.Syn_TLDRemovals
+		globalStats.SyntacticRemovals += fileStats.SyntacticRemovals
+		globalStats.EmailOutlierRemovals += fileStats.EmailOutlierRemovals
+		globalStats.Email_SeqUserRemovals += fileStats.Email_SeqUserRemovals
+		globalStats.Email_ChainRemovals += fileStats.Email_ChainRemovals
+		globalStats.PassOutlierRemovals += fileStats.PassOutlierRemovals
+		globalStats.Pass_ForRemovals += fileStats.Pass_ForRemovals
+		globalStats.Pass_FodRemovals += fileStats.Pass_FodRemovals
 		globalStats.FbobRemovals += fileStats.FbobRemovals
 		statsLock.Unlock()
 
@@ -204,18 +219,15 @@ func processFile(srcPath, destPath, logPath string) error {
 		fmt.Printf("Prior work checks would remove: %d (%.2f%%)\n",
 			fileStats.PriorWorkRemovals,
 			percentage(fileStats.PriorWorkRemovals, fileStats.TotalProcessed))
-		fmt.Printf("Rule-based checks would remove: %d (%.2f%%)\n",
-			fileStats.RuleBasedRemovals,
-			percentage(fileStats.RuleBasedRemovals, fileStats.TotalProcessed))
-		fmt.Printf("Suspicious email checks would remove: %d (%.2f%%)\n",
-			fileStats.Outlier_ChainRemovals,
-			percentage(fileStats.Outlier_ChainRemovals, fileStats.TotalProcessed))
-		fmt.Printf("Follow-on distribution checks would remove: %d (%.2f%%)\n",
-			fileStats.Outlier_FodRemovals,
-			percentage(fileStats.Outlier_FodRemovals, fileStats.TotalProcessed))
-		fmt.Printf("Follow-on ratio checks would remove: %d (%.2f%%)\n",
-			fileStats.Outlier_ForRemovals,
-			percentage(fileStats.Outlier_ForRemovals, fileStats.TotalProcessed))
+		fmt.Printf("Syntactic checks would remove: %d (%.2f%%)\n",
+			fileStats.SyntacticRemovals,
+			percentage(fileStats.SyntacticRemovals, fileStats.TotalProcessed))
+		fmt.Printf("Email Outlier checks would remove: %d (%.2f%%)\n",
+			fileStats.EmailOutlierRemovals,
+			percentage(fileStats.EmailOutlierRemovals, fileStats.TotalProcessed))
+		fmt.Printf("Password Outlier checks would remove: %d (%.2f%%)\n",
+			fileStats.PassOutlierRemovals,
+			percentage(fileStats.PassOutlierRemovals, fileStats.TotalProcessed))
 		fmt.Printf("FBOB checks would remove: %d (%.2f%%)\n",
 			fileStats.FbobRemovals,
 			percentage(fileStats.FbobRemovals, fileStats.TotalProcessed))
@@ -225,7 +237,6 @@ func processFile(srcPath, destPath, logPath string) error {
 
 		usernames, passwords = cleaning.PriorWorksCleaning(originalUsernames, originalPasswords, breachConfig.ExcessiveEmailThreshold, &removedPriorWorks, &fileStats, *dryRun)
 		fileStats.PriorWorkRemovals = len(removedPriorWorks)
-		fileStats.TotalProcessed = trueOriginalCount
 
 		// Path 1: Build set of credentials that survived prior work
 		priorWorkSurvivors := make(map[string]bool, len(usernames))
@@ -243,53 +254,62 @@ func processFile(srcPath, destPath, logPath string) error {
 		copy(otherCheckUsernames, originalUsernames)
 		copy(otherCheckPasswords, originalPasswords)
 
-		otherCheckUsernames, otherCheckPasswords = cleaning.RemoveRuleBased(otherCheckUsernames, otherCheckPasswords, &removedRuleBased, &fileStats, TLD_SET)
-		otherCheckUsernames, otherCheckPasswords = cleaning.RemoveSeqUsers(originalUsernames, originalPasswords, &removedSeqUsers)
-		otherCheckUsernames, otherCheckPasswords, _ = cleaning.RemoveSuspiciousEmails(otherCheckUsernames, otherCheckPasswords, &removedSuspiciousEmail, breachConfig.ChainsFile)
+		otherCheckUsernames, otherCheckPasswords = cleaning.RemoveSyntactic(otherCheckUsernames, otherCheckPasswords, &removedSyntactic, &fileStats, TLD_SET)
+		otherCheckUsernames, otherCheckPasswords = cleaning.RemoveSeqUsers(otherCheckUsernames, otherCheckPasswords, breachConfig.SequentialUserThreshold, &removedSeqUsers)
+		otherCheckUsernames, otherCheckPasswords, _ = cleaning.RemoveEmailChains(otherCheckUsernames, otherCheckPasswords, &removedEmailChains, breachConfig.ChainsFile)
 		otherCheckUsernames, otherCheckPasswords, _ = cleaning.RemoveSuspiciousFollowOnRatios(otherCheckUsernames, otherCheckPasswords, &removedFor, breachConfig.ForCfg)
 		otherCheckUsernames, otherCheckPasswords = cleaning.RemoveSuspiciousFollowOnDistribution(otherCheckUsernames, otherCheckPasswords, &removedFod, breachConfig.FodCfg)
 		otherCheckUsernames, otherCheckPasswords = cleaning.RemoveFBOB(otherCheckUsernames, otherCheckPasswords, &removedFBOB)
 
-		// Calculate deduplicated statistical outliers count
-		statisticalOutliersSet := make(map[string]bool)
+		fileStats.PriorWorkRemovals = len(removedPriorWorks)
+		fileStats.SyntacticRemovals = len(removedSyntactic)
+		fileStats.Email_SeqUserRemovals = len(removedSeqUsers)
+		fileStats.Email_ChainRemovals = len(removedEmailChains)
+		fileStats.Pass_ForRemovals = len(removedFor)
+		fileStats.Pass_FodRemovals = len(removedFod)
+		fileStats.FbobRemovals = len(removedFBOB)
+		fileStats.TotalProcessed = originalCount // Use actual cred count
+
+		// Calculate statistical outliers counts
+		emailOutliersSet := make(map[string]bool)
 		for _, cred := range removedSeqUsers {
-			statisticalOutliersSet[cred] = true
+			emailOutliersSet[cred] = true
 		}
-		for _, cred := range removedSuspiciousEmail {
-			statisticalOutliersSet[cred] = true
+		for _, cred := range removedEmailChains {
+			emailOutliersSet[cred] = true
+		}
+		fileStats.EmailOutlierRemovals = len(emailOutliersSet)
+		for cred := range emailOutliersSet {
+			removedEmailOutlier = append(removedEmailOutlier, cred)
+		}
+
+		passOutliersSet := make(map[string]bool)
+		for _, cred := range removedFor {
+			passOutliersSet[cred] = true
 		}
 		for _, cred := range removedFod {
-			statisticalOutliersSet[cred] = true
+			passOutliersSet[cred] = true
 		}
-		for _, cred := range removedFor {
-			statisticalOutliersSet[cred] = true
-		}
-		fileStats.OutlierRemovals = len(statisticalOutliersSet)
-
-		// Create set of credentials that survived other checks
-		otherCheckSurvivors := make(map[string]bool, len(otherCheckUsernames))
-		for i := range otherCheckUsernames {
-			otherCheckSurvivors[otherCheckUsernames[i]+":"+otherCheckPasswords[i]] = true
+		fileStats.PassOutlierRemovals = len(passOutliersSet)
+		for cred := range passOutliersSet {
+			removedPassOutlier = append(removedPassOutlier, cred)
 		}
 
-		// Clear otherCheck arrays to free memory before building final result
-		otherCheckUsernames = nil
-		otherCheckPasswords = nil
-
-		// Take UNION (intersection): only keep credentials that survived BOTH paths
+		// Take UNION: only keep credentials that survived BOTH paths
 		var finalUsernames []string
 		var finalPasswords []string
-		for i := range originalUsernames {
-			credential := originalUsernames[i] + ":" + originalPasswords[i]
-			if priorWorkSurvivors[credential] && otherCheckSurvivors[credential] {
-				finalUsernames = append(finalUsernames, originalUsernames[i])
-				finalPasswords = append(finalPasswords, originalPasswords[i])
+		for i := range otherCheckUsernames {
+			credential := otherCheckUsernames[i] + ":" + otherCheckPasswords[i]
+			if priorWorkSurvivors[credential] {
+				finalUsernames = append(finalUsernames, otherCheckUsernames[i])
+				finalPasswords = append(finalPasswords, otherCheckPasswords[i])
 			}
 		}
 
 		// Clear original arrays and maps to free memory
 		priorWorkSurvivors = nil
-		otherCheckSurvivors = nil
+		otherCheckUsernames = nil
+		otherCheckPasswords = nil
 
 		// Update global statistics in removal mode
 		statsLock.Lock()
@@ -299,20 +319,21 @@ func processFile(srcPath, destPath, logPath string) error {
 		globalStats.Prior_HexRemovals += fileStats.Prior_HexRemovals
 		globalStats.Prior_InvEmailRemovals += fileStats.Prior_InvEmailRemovals
 		globalStats.Prior_ExcEmailRemovals += fileStats.Prior_ExcEmailRemovals
-		globalStats.PriorWorkRemovals += len(removedPriorWorks)
-		globalStats.Outlier_SeqUserRemovals += fileStats.Outlier_SeqUserRemovals
-		globalStats.Rule_DupeRemovals += fileStats.Rule_DupeRemovals
-		globalStats.Rule_LenEmailRemovals += fileStats.Rule_LenEmailRemovals
-		globalStats.Rule_TLDRemovals += fileStats.Rule_TLDRemovals
-		globalStats.RuleBasedRemovals += len(removedRuleBased)
-		globalStats.OutlierRemovals += fileStats.OutlierRemovals
-		globalStats.Outlier_ChainRemovals += len(removedSuspiciousEmail)
-		globalStats.Outlier_ForRemovals += len(removedFor)
-		globalStats.Outlier_FodRemovals += len(removedFod)
-		globalStats.FbobRemovals += len(removedFBOB)
-		// Calculate actual removals: original count minus final count
-		actualRemovals := len(originalUsernames) - len(finalUsernames)
-		globalStats.TotalRemovals += actualRemovals
+		globalStats.PriorWorkRemovals += fileStats.PriorWorkRemovals
+		globalStats.Syn_DupeRemovals += fileStats.Syn_DupeRemovals
+		globalStats.Syn_LenEmailRemovals += fileStats.Syn_LenEmailRemovals
+		globalStats.Syn_TLDRemovals += fileStats.Syn_TLDRemovals
+		globalStats.SyntacticRemovals += fileStats.SyntacticRemovals
+		globalStats.EmailOutlierRemovals += fileStats.EmailOutlierRemovals
+		globalStats.Email_SeqUserRemovals += fileStats.Email_SeqUserRemovals
+		globalStats.Email_ChainRemovals += fileStats.Email_ChainRemovals
+		globalStats.PassOutlierRemovals += fileStats.PassOutlierRemovals
+		globalStats.Pass_ForRemovals += fileStats.Pass_ForRemovals
+		globalStats.Pass_FodRemovals += fileStats.Pass_FodRemovals
+		globalStats.FbobRemovals += fileStats.FbobRemovals
+
+		fileRemovals := len(originalUsernames) - len(finalUsernames)
+		globalStats.TotalRemovals += fileRemovals
 		statsLock.Unlock()
 
 		// Write cleaned credentials to destination (union of both paths)
@@ -336,13 +357,11 @@ func processFile(srcPath, destPath, logPath string) error {
 
 	// Log removed entries
 	logFiles := map[string][]string{
-		"removed_prior_work.txt":       removedPriorWorks,
-		"removed_seq_users.txt":        removedSeqUsers,
-		"removed_rule_based.txt":       removedRuleBased,
-		"removed_suspicious_email.txt": removedSuspiciousEmail,
-		"removed_for.txt":              removedFor,
-		"removed_fod.txt":              removedFod,
-		"removed_FBOB.txt":             removedFBOB,
+		"removed_prior_work.txt":     removedPriorWorks,
+		"removed_syntactic.txt":      removedSyntactic,
+		"removed_email_outliers.txt": removedEmailOutlier,
+		"removed_pass_outliers.txt":  removedPassOutlier,
+		"removed_FBOB.txt":           removedFBOB,
 	}
 
 	sumf, err := os.OpenFile(filepath.Join(logPath, logSummary), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -434,15 +453,16 @@ func writeGlobalStats(logPath string) error {
 		{"Prior work Hex Substring removals", globalStats.Prior_HexRemovals},
 		{"Prior work Invalid Email removals", globalStats.Prior_InvEmailRemovals},
 		{"Prior work Excessive Email removals", globalStats.Prior_ExcEmailRemovals},
-		{"Rule-based removals", globalStats.RuleBasedRemovals},
-		{"Rule-based Duplicates removals", globalStats.Rule_DupeRemovals},
-		{"Rule-based Email Length removals", globalStats.Rule_LenEmailRemovals},
-		{"Rule-based TLD removals", globalStats.Rule_TLDRemovals},
-		{"Statistical Outlier Removals", globalStats.OutlierRemovals},
-		{"Stat-outlier Sequential Username removals", globalStats.Outlier_SeqUserRemovals},
-		{"Stat-outlier Email chain removals", globalStats.Outlier_ChainRemovals},
-		{"Stat-outlier Follow-on distribution removals", globalStats.Outlier_FodRemovals},
-		{"Stat-outlier Follow-on ratio removals", globalStats.Outlier_ForRemovals},
+		{"Syntactic removals", globalStats.SyntacticRemovals},
+		{"Syntactic Duplicates removals", globalStats.Syn_DupeRemovals},
+		{"Syntactic Email Length removals", globalStats.Syn_LenEmailRemovals},
+		{"Syntactic TLD removals", globalStats.Syn_TLDRemovals},
+		{"Email Outlier Removals", globalStats.EmailOutlierRemovals},
+		{"Email Outlier Sequential Username removals", globalStats.Email_SeqUserRemovals},
+		{"Email Outlier Email chain removals", globalStats.Email_ChainRemovals},
+		{"Password Outlier Removals", globalStats.PassOutlierRemovals},
+		{"Password Outlier Follow-on distribution removals", globalStats.Pass_FodRemovals},
+		{"Password Outlier Follow-on ratio removals", globalStats.Pass_ForRemovals},
 		{"FBOB removals", globalStats.FbobRemovals},
 	}
 
@@ -624,22 +644,18 @@ func main() {
 		map[bool]string{true: "would remove", false: "removed"}[*dryRun],
 		globalStats.PriorWorkRemovals,
 		percentage(globalStats.PriorWorkRemovals, globalStats.TotalProcessed))
-	fmt.Printf("Rule-based checks %s: %d (%.2f%%)\n",
+	fmt.Printf("Syntactic checks %s: %d (%.2f%%)\n",
 		map[bool]string{true: "would remove", false: "removed"}[*dryRun],
-		globalStats.RuleBasedRemovals,
-		percentage(globalStats.RuleBasedRemovals, globalStats.TotalProcessed))
-	fmt.Printf("Suspicious email checks %s: %d (%.2f%%)\n",
+		globalStats.SyntacticRemovals,
+		percentage(globalStats.SyntacticRemovals, globalStats.TotalProcessed))
+	fmt.Printf("Email Outlier checks %s: %d (%.2f%%)\n",
 		map[bool]string{true: "would remove", false: "removed"}[*dryRun],
-		globalStats.Outlier_ChainRemovals,
-		percentage(globalStats.Outlier_ChainRemovals, globalStats.TotalProcessed))
-	fmt.Printf("Follow-on distribution checks %s: %d (%.2f%%)\n",
+		globalStats.EmailOutlierRemovals,
+		percentage(globalStats.EmailOutlierRemovals, globalStats.TotalProcessed))
+	fmt.Printf("Password Outlier checks %s: %d (%.2f%%)\n",
 		map[bool]string{true: "would remove", false: "removed"}[*dryRun],
-		globalStats.Outlier_FodRemovals,
-		percentage(globalStats.Outlier_FodRemovals, globalStats.TotalProcessed))
-	fmt.Printf("Follow-on ratio checks %s: %d (%.2f%%)\n",
-		map[bool]string{true: "would remove", false: "removed"}[*dryRun],
-		globalStats.Outlier_ForRemovals,
-		percentage(globalStats.Outlier_ForRemovals, globalStats.TotalProcessed))
+		globalStats.PassOutlierRemovals,
+		percentage(globalStats.PassOutlierRemovals, globalStats.TotalProcessed))
 	fmt.Printf("FBOB checks %s: %d (%.2f%%)\n",
 		map[bool]string{true: "would remove", false: "removed"}[*dryRun],
 		globalStats.FbobRemovals,

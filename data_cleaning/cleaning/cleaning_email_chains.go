@@ -104,7 +104,7 @@ func loadSuspiciousChains(filepath string) ([][]string, error) {
 // based on suspicious sequences loaded from CSV. Removed credentials are recorded in
 // removedSuspiciousEmail in the format "username:password". It returns new slices of
 // usernames and passwords.
-func RemoveSuspiciousEmails(usernames, passwords []string, removedSuspiciousEmail *[]string, chainsFilepath string) ([]string, []string, error) {
+func RemoveEmailChains(usernames, passwords []string, removedSuspiciousEmail *[]string, chainsFilepath string) ([]string, []string, error) {
 	// Load suspicious sequences from CSV file (sorted by length, longest first)
 	suspiciousSequences, err := loadSuspiciousChains(chainsFilepath)
 	if err != nil {

@@ -2,24 +2,25 @@ package config
 
 // CleaningStats stores counts of what would be removed by each method
 type CleaningStats struct {
-	PriorWorkRemovals       int
-	Prior_AsciiRemovals     int
-	Prior_LenRemovals       int
-	Prior_HexRemovals       int
-	Prior_InvEmailRemovals  int
-	Prior_ExcEmailRemovals  int
-	RuleBasedRemovals       int
-	Rule_DupeRemovals       int
-	Rule_LenEmailRemovals   int
-	Rule_TLDRemovals        int
-	OutlierRemovals         int
-	Outlier_SeqUserRemovals int
-	Outlier_ChainRemovals   int
-	Outlier_FodRemovals     int
-	Outlier_ForRemovals     int
-	FbobRemovals            int
-	TotalRemovals           int
-	TotalProcessed          int
+	PriorWorkRemovals      int
+	Prior_AsciiRemovals    int
+	Prior_LenRemovals      int
+	Prior_HexRemovals      int
+	Prior_InvEmailRemovals int
+	Prior_ExcEmailRemovals int
+	SyntacticRemovals      int
+	Syn_DupeRemovals       int
+	Syn_LenEmailRemovals   int
+	Syn_TLDRemovals        int
+	PassOutlierRemovals    int
+	EmailOutlierRemovals   int
+	Email_SeqUserRemovals  int
+	Email_ChainRemovals    int
+	Pass_FodRemovals       int
+	Pass_ForRemovals       int
+	FbobRemovals           int
+	TotalRemovals          int
+	TotalProcessed         int
 }
 
 // BreachConfig holds configuration for processing a specific breach dataset
@@ -33,6 +34,7 @@ type BreachConfig struct {
 	FodCfg                  string
 	TLDFile                 string
 	ExcessiveEmailThreshold int
+	SequentialUserThreshold int
 }
 
 // Predefined breach configurations
@@ -47,6 +49,7 @@ var BreachConfigs = map[string]BreachConfig{
 		FodCfg:                  "[Insert Config]",
 		TLDFile:                 "[Insert Config]",
 		ExcessiveEmailThreshold: 100,
+		SequentialUserThreshold: 100,
 	},
 	"comb": {
 		Name:                    "comb",
@@ -58,6 +61,7 @@ var BreachConfigs = map[string]BreachConfig{
 		FodCfg:                  "[Insert Config]",
 		TLDFile:                 "[Insert Config]",
 		ExcessiveEmailThreshold: 100,
+		SequentialUserThreshold: 100,
 	},
 }
 
